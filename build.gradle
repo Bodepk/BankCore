@@ -24,12 +24,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+
     // ===== DEV TOOLS =====
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     // ===== BASE DE DATOS =====
     runtimeOnly 'org.postgresql:postgresql'
-    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-core:10.15.0'
+    implementation 'org.flywaydb:flyway-database-postgresql:10.15.0'
 
     // ===== TESTING =====
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

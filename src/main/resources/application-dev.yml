@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/bankdb
+    url: jdbc:postgresql://localhost:5435/bankdb
     username: bankuser
-    password: BankPass2024
+    password: bankpass
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -21,7 +21,7 @@ spring:
   flyway:
     enabled: true
     user: bankuser
-    password: BankPass2024
+    password: bankpass
     locations: classpath:db/migration
     baseline-on-migrate: true
 
