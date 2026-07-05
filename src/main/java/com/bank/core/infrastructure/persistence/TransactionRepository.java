@@ -1,8 +1,8 @@
 package com.bank.core.infrastructure.persistence;
 
-import com.bank.core.domain.model.Transaction;
-import com.bank.core.domain.model.Account;
 import com.bank.core.domain.enums.TransactionType;
+import com.bank.core.domain.model.Account;
+import com.bank.core.domain.model.Transaction;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,13 +16,13 @@ import java.util.Optional;
 public interface TransactionRepository extends JpaRepository<Transaction, String> {
 
     /**
-     * Busca transacciones de una cuenta (como origen o destino)
+     * Busca transacciones de una cuenta (como origen o destino).
      */
     @Query("SELECT t FROM Transaction t WHERE t.sourceAccount = :account OR t.destinationAccount = :account")
     List<Transaction> findByAccount(@Param("account") Account account);
 
     /**
-     * Busca transacciones de una cuenta en un rango de fechas
+     * Busca transacciones de una cuenta en un rango de fechas.
      */
     @Query("SELECT t FROM Transaction t WHERE (t.sourceAccount = :account OR t.destinationAccount = :account) " +
             "AND t.transactionDate BETWEEN :startDate AND :endDate")
@@ -31,20 +31,12 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
                                                 @Param("endDate") LocalDateTime endDate);
 
     /**
-     * Busca transacciones por tipo
+     * Busca transacciones por tipo.
      */
     List<Transaction> findByTransactionType(TransactionType transactionType);
 
     /**
-     * Busca transacciones por referencia
+     * Busca una transacción por referencia.
      */
     Optional<Transaction> findByReference(String reference);
-
-    /**
-     * Cuenta transacciones de una cuenta en un período
-     */
-    @Query("SELECT COUNT(t) FROM Transaction t WHERE (t.sourceAccount = :account OR t.destinationAccount = :account) " +
-            "AND t.transactionDate >= :since")
-    long countTransactionsSince(@Param("account") Account account,
-                                @Param("since") LocalDateTime since);
 }

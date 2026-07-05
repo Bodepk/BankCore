@@ -1,135 +1,120 @@
 package com.bank.core.api.controller;
 
-import com.bank.core.domain.enums.AccountType;
+import com.bank.core.api.dto.request.CreateAccountRequest;
+import com.bank.core.api.dto.request.DepositRequest;
+import com.bank.core.api.dto.request.TransferRequest;
+import com.bank.core.api.dto.response.AccountResponse;
+import com.bank.core.api.dto.response.TransactionResponse;
+import com.bank.core.api.mapper.AccountMapper;
 import com.bank.core.domain.model.Account;
+import com.bank.core.domain.model.Transaction;
 import com.bank.core.service.core.AccountService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * Controlador REST para operaciones con cuentas bancarias.
- *
- * @RestController: Indica que esta clase es un controlador REST
- * @RequestMapping("/api/v1/accounts"): Base de todas las rutas
+ * Controlador REST para operaciones con cuentas.
  */
 @RestController
 @RequestMapping("/api/v1/accounts")
 public class AccountController {
 
     private final AccountService accountService;
+    private final AccountMapper accountMapper;
 
-    /**
-     * Constructor con inyección de dependencias.
-     * Spring inyecta automáticamente el AccountService.
-     */
-    public AccountController(AccountService accountService) {
+    public AccountController(AccountService accountService, AccountMapper accountMapper) {
         this.accountService = accountService;
+        this.accountMapper = accountMapper;
     }
 
     /**
      * Crea una nueva cuenta bancaria.
-     *
-     * POST /api/v1/accounts?accountNumber=123&accountType=SAVINGS&currency=USD
-     *
-     * @param accountNumber Número de cuenta (único)
-     * @param accountType Tipo de cuenta (SAVINGS, CHECKING, BUSINESS)
-     * @param currency Moneda (USD por defecto)
-     * @return Cuenta creada con estado 201 (CREATED)
+     * POST /api/v1/accounts
+     * Body: { "accountNumber": "1234567890", "accountType": "SAVINGS", "currency": "USD" }
      */
     @PostMapping
-    public ResponseEntity<Account> createAccount(
-            @RequestParam String accountNumber,
-            @RequestParam AccountType accountType,
-            @RequestParam(defaultValue = "USD") String currency) {
-
-        Account account = accountService.createAccount(accountNumber, accountType, currency);
-        return ResponseEntity.status(HttpStatus.CREATED).body(account);
+    public ResponseEntity<AccountResponse> createAccount(@Valid @RequestBody CreateAccountRequest request) {
+        Account account = accountService.createAccount(
+                request.getAccountNumber(),
+                request.getAccountType(),
+                request.getCurrency()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(accountMapper.toResponse(account));
     }
 
     /**
      * Busca una cuenta por su número.
-     *
-     * GET /api/v1/accounts/1234567890
-     *
-     * @param accountNumber Número de cuenta
-     * @return Cuenta encontrada
+     * GET /api/v1/accounts/{accountNumber}
      */
     @GetMapping("/{accountNumber}")
-    public ResponseEntity<Account> getAccount(@PathVariable String accountNumber) {
+    public ResponseEntity<AccountResponse> getAccount(@PathVariable String accountNumber) {
         Account account = accountService.findByAccountNumber(accountNumber);
-        return ResponseEntity.ok(account);
+        return ResponseEntity.ok(accountMapper.toResponse(account));
     }
 
     /**
      * Lista todas las cuentas activas.
-     *
      * GET /api/v1/accounts
-     *
-     * @return Lista de cuentas activas
      */
     @GetMapping
-    public ResponseEntity<List<Account>> getAllActiveAccounts() {
+    public ResponseEntity<List<AccountResponse>> getAllActiveAccounts() {
         List<Account> accounts = accountService.findAllActiveAccounts();
-        return ResponseEntity.ok(accounts);
+        List<AccountResponse> responses = accounts.stream()
+                .map(accountMapper::toResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 
     /**
      * Deposita dinero en una cuenta.
-     *
-     * POST /api/v1/accounts/1234567890/deposit?amount=1000
-     *
-     * @param accountNumber Número de cuenta
-     * @param amount Monto a depositar
-     * @return Cuenta actualizada
+     * POST /api/v1/accounts/{accountNumber}/deposit
+     * Body: { "amount": 1000 }
      */
     @PostMapping("/{accountNumber}/deposit")
-    public ResponseEntity<Account> deposit(
+    public ResponseEntity<AccountResponse> deposit(
             @PathVariable String accountNumber,
-            @RequestParam BigDecimal amount) {
+            @Valid @RequestBody DepositRequest request) {
 
-        Account account = accountService.deposit(accountNumber, amount);
-        return ResponseEntity.ok(account);
+        Account account = accountService.deposit(accountNumber, request.getAmount());
+        return ResponseEntity.ok(accountMapper.toResponse(account));
     }
 
     /**
      * Retira dinero de una cuenta.
-     *
-     * POST /api/v1/accounts/1234567890/withdraw?amount=500
-     *
-     * @param accountNumber Número de cuenta
-     * @param amount Monto a retirar
-     * @return Cuenta actualizada
+     * POST /api/v1/accounts/{accountNumber}/withdraw
+     * Body: { "amount": 500 }
      */
     @PostMapping("/{accountNumber}/withdraw")
-    public ResponseEntity<Account> withdraw(
+    public ResponseEntity<AccountResponse> withdraw(
             @PathVariable String accountNumber,
-            @RequestParam BigDecimal amount) {
+            @Valid @RequestBody DepositRequest request) {
 
-        Account account = accountService.withdraw(accountNumber, amount);
-        return ResponseEntity.ok(account);
+        Account account = accountService.withdraw(accountNumber, request.getAmount());
+        return ResponseEntity.ok(accountMapper.toResponse(account));
     }
-
+    @GetMapping("/{accountNumber}/transactions")
+    public ResponseEntity<List<TransactionResponse>> getTransactions(@PathVariable String accountNumber) {
+        List<TransactionResponse> transactions = accountService.getTransactions(accountNumber);
+        return ResponseEntity.ok(transactions);
+    }
     /**
      * Transfiere dinero entre dos cuentas.
-     *
-     * POST /api/v1/accounts/transfer?sourceAccount=123&destinationAccount=456&amount=100
-     *
-     * @param sourceAccount Número de cuenta origen
-     * @param destinationAccount Número de cuenta destino
-     * @param amount Monto a transferir
-     * @return Cuenta origen actualizada
+     * POST /api/v1/accounts/transfer
+     * Body: { "sourceAccountNumber": "1234567890", "destinationAccountNumber": "9876543210", "amount": 100 }
      */
     @PostMapping("/transfer")
-    public ResponseEntity<Account> transfer(
-            @RequestParam String sourceAccount,
-            @RequestParam String destinationAccount,
-            @RequestParam BigDecimal amount) {
-
-        Account account = accountService.transfer(sourceAccount, destinationAccount, amount);
-        return ResponseEntity.ok(account);
+    public ResponseEntity<AccountResponse> transfer(@Valid @RequestBody TransferRequest request) {
+        Account account = accountService.transfer(
+                request.getSourceAccountNumber(),
+                request.getDestinationAccountNumber(),
+                request.getAmount()
+        );
+        return ResponseEntity.ok(accountMapper.toResponse(account));
     }
 }

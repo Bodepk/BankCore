@@ -2,8 +2,10 @@ package com.bank.core.domain.model;
 
 import com.bank.core.domain.enums.TransactionType;
 import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * Entidad que representa una transacción bancaria.
@@ -12,75 +14,56 @@ import java.time.LocalDateTime;
 @Table(name = "transactions")
 public class Transaction extends BaseEntity {
 
-    /**
-     * ID único de la transacción (formato: TX-YYYYMMDD-XXXXX)
-     */
     @Column(name = "transaction_id", unique = true, nullable = false, length = 50)
     private String transactionId;
 
-    /**
-     * Cuenta origen (para retiros y transferencias)
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "source_account_id")
     private Account sourceAccount;
 
-    /**
-     * Cuenta destino (para depósitos y transferencias)
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "destination_account_id")
     private Account destinationAccount;
 
-    /**
-     * Tipo de transacción
-     */
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false)
     private TransactionType transactionType;
 
-    /**
-     * Monto de la transacción
-     */
     @Column(name = "amount", precision = 19, scale = 2, nullable = false)
     private BigDecimal amount;
 
-    /**
-     * Saldo antes de la transacción
-     */
     @Column(name = "balance_before", precision = 19, scale = 2)
     private BigDecimal balanceBefore;
 
-    /**
-     * Saldo después de la transacción
-     */
     @Column(name = "balance_after", precision = 19, scale = 2)
     private BigDecimal balanceAfter;
 
-    /**
-     * Descripción de la transacción
-     */
     @Column(name = "description", length = 255)
     private String description;
 
-    /**
-     * Referencia externa (número de factura, etc.)
-     */
     @Column(name = "reference", length = 50)
     private String reference;
 
-    /**
-     * Fecha de la transacción
-     */
     @Column(name = "transaction_date", nullable = false)
     private LocalDateTime transactionDate;
 
     public Transaction() {
         super();
         this.transactionDate = LocalDateTime.now();
+        this.transactionId = generateTransactionId();
     }
 
-    // ===== GETTERS Y SETTERS =====
+    /**
+     * Genera un ID único para la transacción.
+     * Formato: TX-YYYYMMDD-XXXXX (ej: TX-20260705-00001)
+     */
+    private String generateTransactionId() {
+        String date = LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String random = String.format("%05d", (int) (Math.random() * 100000));
+        return "TX-" + date + "-" + random;
+    }
+
+    //GETTERS Y SETTERS
 
     public String getTransactionId() {
         return transactionId;
@@ -160,5 +143,19 @@ public class Transaction extends BaseEntity {
 
     public void setTransactionDate(LocalDateTime transactionDate) {
         this.transactionDate = transactionDate;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        Transaction that = (Transaction) o;
+        return Objects.equals(transactionId, that.transactionId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), transactionId);
     }
 }
