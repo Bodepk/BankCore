@@ -1,6 +1,7 @@
 package com.bank.core.infrastructure.persistence;
 
 import com.bank.core.domain.enums.AccountStatus;
+import com.bank.core.domain.enums.AccountType;
 import com.bank.core.domain.model.Account;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -16,4 +17,8 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     boolean existsByAccountNumber(String accountNumber);
 
     List<Account> findByStatus(AccountStatus status);
+    List<Account> findByAccountType(AccountType accountType);
+
+    // NUEVO: Buscar cuentas por tipo y estado
+    List<Account> findByAccountTypeAndStatus(AccountType accountType, AccountStatus status);
 }
