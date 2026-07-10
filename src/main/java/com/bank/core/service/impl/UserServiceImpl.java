@@ -10,6 +10,7 @@ import com.bank.core.domain.model.User;
 import com.bank.core.infrastructure.persistence.UserRepository;
 import com.bank.core.service.core.JwtService;
 import com.bank.core.service.core.UserService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,10 +28,11 @@ public class UserServiceImpl implements UserService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
+    // Usamos @Lazy para romper el ciclo
     public UserServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
                            JwtService jwtService,
-                           AuthenticationManager authenticationManager) {
+                           @Lazy AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;

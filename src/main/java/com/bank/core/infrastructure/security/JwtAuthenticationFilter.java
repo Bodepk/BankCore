@@ -34,7 +34,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
+        final String requestURI = request.getRequestURI();
 
+        // Si es una ruta de autenticación, continuar sin verificar token
+        if (requestURI.startsWith("/api/v1/auth")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Si es health check, continuar sin verificar token
+        if (requestURI.startsWith("/api/v1/health") || requestURI.startsWith("/management")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Para otras rutas, verificar token
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
