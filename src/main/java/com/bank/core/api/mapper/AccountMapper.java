@@ -16,7 +16,9 @@ public interface AccountMapper {
     @Mapping(target = "interestRate", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "user", ignore = true)
     Account toEntity(CreateAccountRequest request);
 
+    @Mapping(target = "ownerUsername", source = "user.username")
     AccountResponse toResponse(Account account);
 }

@@ -7,16 +7,19 @@ import com.bank.core.api.mapper.AccountMapper;
 import com.bank.core.api.mapper.TransactionMapper;
 import com.bank.core.domain.enums.AccountStatus;
 import com.bank.core.domain.enums.AccountType;
+import com.bank.core.domain.enums.Role;
 import com.bank.core.domain.enums.TransactionType;
 import com.bank.core.domain.exception.AccountNotFoundException;
 import com.bank.core.domain.exception.InsufficientBalanceException;
 import com.bank.core.domain.model.Account;
 import com.bank.core.domain.model.Transaction;
+import com.bank.core.domain.model.User;
 import com.bank.core.infrastructure.persistence.AccountRepository;
 import com.bank.core.infrastructure.persistence.TransactionRepository;
 import com.bank.core.service.core.AccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,43 +54,50 @@ public class AccountServiceImpl implements AccountService {
     // =============================================
 
     @Override
-    public AccountResponse createAccount(String accountNumber, AccountType accountType, String currency) {
+    public AccountResponse createAccount(User currentUser, String accountNumber, AccountType accountType, String currency) {
         if (accountRepository.existsByAccountNumber(accountNumber)) {
             throw new IllegalArgumentException("El número de cuenta " + accountNumber + " ya existe");
         }
 
         Account account = new Account(accountNumber, accountType, currency);
+        account.setUser(currentUser);
         if (accountType == AccountType.SAVINGS) {
             account.setInterestRate(new BigDecimal("2.5"));
         }
 
         Account saved = accountRepository.save(account);
-        log.info("Cuenta creada: {} - Tipo: {} - Moneda: {}", accountNumber, accountType, currency);
+        log.info("Cuenta creada: {} - Tipo: {} - Moneda: {} - Dueño: {}",
+                accountNumber, accountType, currency, currentUser.getUsername());
         return accountMapper.toResponse(saved);
     }
 
     @Override
-    public AccountResponse findByAccountNumber(String accountNumber) {
-        Account account = accountRepository.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new AccountNotFoundException(accountNumber));
+    public AccountResponse findByAccountNumber(User currentUser, String accountNumber) {
+        Account account = findByAccountNumberEntity(accountNumber);
+        verifyOwnership(account, currentUser);
         return accountMapper.toResponse(account);
     }
 
     @Override
-    public List<AccountResponse> findAllActiveAccounts() {
-        List<Account> accounts = accountRepository.findByStatus(AccountStatus.ACTIVE);
+    public List<AccountResponse> findAllActiveAccounts(User currentUser) {
+        List<Account> accounts = isAdmin(currentUser)
+                ? accountRepository.findByStatus(AccountStatus.ACTIVE)
+                : accountRepository.findByUserAndStatus(currentUser, AccountStatus.ACTIVE);
+
         return accounts.stream()
                 .map(accountMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public AccountResponse deposit(String accountNumber, BigDecimal amount) {
+    public AccountResponse deposit(User currentUser, String accountNumber, BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El monto del depósito debe ser positivo");
         }
 
         Account account = findByAccountNumberEntity(accountNumber);
+        verifyOwnership(account, currentUser);
+
         BigDecimal balanceBefore = account.getBalance();
 
         account.deposit(amount);
@@ -102,12 +112,13 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public AccountResponse withdraw(String accountNumber, BigDecimal amount) {
+    public AccountResponse withdraw(User currentUser, String accountNumber, BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("El monto del retiro debe ser positivo");
         }
 
         Account account = findByAccountNumberEntity(accountNumber);
+        verifyOwnership(account, currentUser);
 
         if (!account.hasSufficientBalance(amount)) {
             log.warn("Intento de retiro sin saldo suficiente: {} - Disponible: {}, Solicitado: {}",
@@ -132,7 +143,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public AccountResponse transfer(String sourceAccountNumber, String destinationAccountNumber, BigDecimal amount) {
+    public AccountResponse transfer(User currentUser, String sourceAccountNumber, String destinationAccountNumber, BigDecimal amount) {
         if (sourceAccountNumber.equals(destinationAccountNumber)) {
             throw new IllegalArgumentException("No se puede transferir a la misma cuenta");
         }
@@ -142,6 +153,11 @@ public class AccountServiceImpl implements AccountService {
         }
 
         Account source = findByAccountNumberEntity(sourceAccountNumber);
+        // Solo se valida dueño de la cuenta ORIGEN: podés transferir A la cuenta
+        // de otra persona, pero solo podés sacar dinero de la tuya (o de
+        // cualquiera si sos ADMIN).
+        verifyOwnership(source, currentUser);
+
         Account destination = findByAccountNumberEntity(destinationAccountNumber);
 
         if (!source.hasSufficientBalance(amount)) {
@@ -174,26 +190,31 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public AccountResponse blockAccount(String accountNumber) {
+    public AccountResponse blockAccount(User currentUser, String accountNumber) {
+        requireAdmin(currentUser);
         Account account = findByAccountNumberEntity(accountNumber);
         account.setStatus(AccountStatus.BLOCKED);
         Account saved = accountRepository.save(account);
-        log.info("Cuenta bloqueada: {}", accountNumber);
+        log.info("Cuenta bloqueada: {} por admin {}", accountNumber, currentUser.getUsername());
         return accountMapper.toResponse(saved);
     }
 
     @Override
-    public AccountResponse activateAccount(String accountNumber) {
+    public AccountResponse activateAccount(User currentUser, String accountNumber) {
+        requireAdmin(currentUser);
         Account account = findByAccountNumberEntity(accountNumber);
         account.setStatus(AccountStatus.ACTIVE);
         Account saved = accountRepository.save(account);
-        log.info("Cuenta activada: {}", accountNumber);
+        log.info("Cuenta activada: {} por admin {}", accountNumber, currentUser.getUsername());
         return accountMapper.toResponse(saved);
     }
 
     @Override
-    public List<AccountResponse> findAccountsByType(AccountType accountType) {
-        List<Account> accounts = accountRepository.findByAccountType(accountType);
+    public List<AccountResponse> findAccountsByType(User currentUser, AccountType accountType) {
+        List<Account> accounts = isAdmin(currentUser)
+                ? accountRepository.findByAccountType(accountType)
+                : accountRepository.findByUserAndAccountType(currentUser, accountType);
+
         return accounts.stream()
                 .map(accountMapper::toResponse)
                 .collect(Collectors.toList());
@@ -204,8 +225,9 @@ public class AccountServiceImpl implements AccountService {
     // =============================================
 
     @Override
-    public List<TransactionResponse> getTransactions(String accountNumber) {
+    public List<TransactionResponse> getTransactions(User currentUser, String accountNumber) {
         Account account = findByAccountNumberEntity(accountNumber);
+        verifyOwnership(account, currentUser);
         List<Transaction> transactions = transactionRepository.findByAccount(account);
         return transactions.stream()
                 .map(transactionMapper::toResponse)
@@ -213,10 +235,11 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public List<TransactionResponse> getTransactionsByDateRange(String accountNumber,
+    public List<TransactionResponse> getTransactionsByDateRange(User currentUser, String accountNumber,
                                                                 LocalDateTime startDate,
                                                                 LocalDateTime endDate) {
         Account account = findByAccountNumberEntity(accountNumber);
+        verifyOwnership(account, currentUser);
         List<Transaction> transactions = transactionRepository
                 .findByAccountAndDateRange(account, startDate, endDate);
         return transactions.stream()
@@ -225,8 +248,9 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public List<TransactionResponse> getRecentTransactions(String accountNumber, int limit) {
+    public List<TransactionResponse> getRecentTransactions(User currentUser, String accountNumber, int limit) {
         Account account = findByAccountNumberEntity(accountNumber);
+        verifyOwnership(account, currentUser);
         List<Transaction> transactions = transactionRepository
                 .findRecentTransactions(account, limit);
         return transactions.stream()
@@ -235,8 +259,9 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public TransactionSummary getTransactionSummary(String accountNumber) {
+    public TransactionSummary getTransactionSummary(User currentUser, String accountNumber) {
         Account account = findByAccountNumberEntity(accountNumber);
+        verifyOwnership(account, currentUser);
         List<Transaction> transactions = transactionRepository.findByAccount(account);
 
         TransactionSummary summary = new TransactionSummary();
@@ -296,6 +321,31 @@ public class AccountServiceImpl implements AccountService {
     private Account findByAccountNumberEntity(String accountNumber) {
         return accountRepository.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new AccountNotFoundException(accountNumber));
+    }
+
+    /**
+     * Verifica que la cuenta pertenezca al usuario autenticado, salvo que
+     * sea ADMIN (en cuyo caso puede operar cualquier cuenta).
+     */
+    private void verifyOwnership(Account account, User currentUser) {
+        if (isAdmin(currentUser)) {
+            return;
+        }
+        if (!account.belongsTo(currentUser)) {
+            log.warn("Usuario {} intentó acceder a una cuenta que no le pertenece: {}",
+                    currentUser.getUsername(), account.getAccountNumber());
+            throw new AccessDeniedException("No tenés permiso para operar sobre esta cuenta");
+        }
+    }
+
+    private void requireAdmin(User currentUser) {
+        if (!isAdmin(currentUser)) {
+            throw new AccessDeniedException("Esta operación requiere permisos de administrador");
+        }
+    }
+
+    private boolean isAdmin(User currentUser) {
+        return currentUser != null && currentUser.getRole() == Role.ADMIN;
     }
 
     /**

@@ -5,6 +5,7 @@ import com.bank.core.domain.enums.AccountType;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.util.Objects;
+// User está en el mismo paquete (com.bank.core.domain.model), no necesita import
 
 /**
  * Entidad que representa una cuenta bancaria.
@@ -65,6 +66,15 @@ public class Account extends BaseEntity {
      */
     @Column(name = "interest_rate", precision = 5, scale = 2)
     private BigDecimal interestRate = BigDecimal.ZERO;
+
+    /**
+     * Usuario dueño de la cuenta.
+     * FetchType.LAZY para no cargar el usuario completo cada vez que
+     * se carga una cuenta (evita queries innecesarias).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 
     /**
      * Constructor vacío (requerido por JPA)
@@ -212,6 +222,22 @@ public class Account extends BaseEntity {
 
     public void setInterestRate(BigDecimal interestRate) {
         this.interestRate = interestRate;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    /**
+     * Verifica si la cuenta pertenece al usuario dado.
+     */
+    public boolean belongsTo(User candidate) {
+        return this.user != null && candidate != null
+                && this.user.getId().equals(candidate.getId());
     }
 
     @Override

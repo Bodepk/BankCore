@@ -22,6 +22,7 @@ public class AccountResponse {
     private BigDecimal interestRate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String ownerUsername;
 
     public AccountResponse() {
     }
@@ -105,5 +106,13 @@ public class AccountResponse {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getOwnerUsername() {
+        return ownerUsername;
+    }
+
+    public void setOwnerUsername(String ownerUsername) {
+        this.ownerUsername = ownerUsername;
     }
 }
