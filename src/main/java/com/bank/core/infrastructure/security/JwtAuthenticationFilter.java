@@ -36,8 +36,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
         final String requestURI = request.getRequestURI();
 
-        // Si es una ruta de autenticación, continuar sin verificar token
-        if (requestURI.startsWith("/api/v1/auth")) {
+        // Si es una ruta pública de autenticación (register/login/refresh),
+        // continuar sin verificar token. OJO: /api/v1/auth/me NO es pública,
+        // necesita autenticarse para saber "quién soy".
+        if (requestURI.equals("/api/v1/auth/register")
+                || requestURI.equals("/api/v1/auth/login")
+                || requestURI.equals("/api/v1/auth/refresh")) {
             filterChain.doFilter(request, response);
             return;
         }

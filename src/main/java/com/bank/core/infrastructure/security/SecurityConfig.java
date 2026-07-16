@@ -35,9 +35,11 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        // Rutas públicas - SIN AUTENTICACIÓN
+                        .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
                         .requestMatchers("/api/v1/health").permitAll()
                         .requestMatchers("/management/**").permitAll()
+                        // Cualquier otra ruta requiere autenticación (incluye /api/v1/auth/me)
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

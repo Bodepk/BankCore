@@ -4,10 +4,12 @@ import com.bank.core.api.dto.request.LoginRequest;
 import com.bank.core.api.dto.request.RegisterRequest;
 import com.bank.core.api.dto.response.AuthResponse;
 import com.bank.core.api.dto.response.UserResponse;
+import com.bank.core.domain.model.User;
 import com.bank.core.service.core.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -39,8 +41,8 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<UserResponse> getCurrentUser(@RequestParam String username) {
-        UserResponse response = userService.getUserByUsername(username);
+    public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal User currentUser) {
+        UserResponse response = userService.getCurrentUser(currentUser);
         return ResponseEntity.ok(response);
     }
 }
