@@ -47,7 +47,9 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'com.h2database:h2'
 }
-
+tasks.withType(JavaCompile) {
+    options.compilerArgs += '-Xlint:deprecation'
+}
 test {
     useJUnitPlatform()
     testLogging {
