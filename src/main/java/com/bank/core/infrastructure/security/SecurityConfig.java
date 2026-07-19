@@ -16,6 +16,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpStatus;
 
 @Configuration
 @EnableWebSecurity
@@ -41,6 +42,23 @@ public class SecurityConfig {
                         .requestMatchers("/management/**").permitAll()
                         // Cualquier otra ruta requiere autenticación (incluye /api/v1/auth/me)
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(exceptions -> exceptions
+                        // Por defecto, Spring Security responde 403 cuando no hay
+                        // autenticación (Http403ForbiddenEntryPoint). Lo reemplazamos
+                        // por un 401, que es lo semánticamente correcto para "no
+                        // autenticado" (403 debería reservarse para "autenticado
+                        // pero sin permiso", que ya manejamos en GlobalExceptionHandler).
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                            response.setContentType("application/json");
+                            response.getWriter().write(
+                                    "{\"timestamp\":\"" + java.time.LocalDateTime.now() + "\","
+                                            + "\"status\":401,"
+                                            + "\"error\":\"Unauthorized\","
+                                            + "\"message\":\"Se requiere autenticación para acceder a este recurso\"}"
+                            );
+                        })
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
