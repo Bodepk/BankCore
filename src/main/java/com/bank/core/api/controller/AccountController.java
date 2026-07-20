@@ -9,6 +9,7 @@ import com.bank.core.api.dto.response.TransactionSummary;
 import com.bank.core.domain.enums.AccountType;
 import com.bank.core.domain.model.User;
 import com.bank.core.service.core.AccountService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Tag(name = "Cuentas y Transacciones", description = "Creación de cuentas, depósitos, retiros, transferencias e historial")
 @RestController
 @RequestMapping("/api/v1/accounts")
 public class AccountController {

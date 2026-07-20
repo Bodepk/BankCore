@@ -6,12 +6,14 @@ import com.bank.core.api.dto.response.AuthResponse;
 import com.bank.core.api.dto.response.UserResponse;
 import com.bank.core.domain.model.User;
 import com.bank.core.service.core.UserService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Autenticación", description = "Registro, login, refresh de token y datos del usuario autenticado")
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
