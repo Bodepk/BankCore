@@ -16,7 +16,11 @@ management:
       show-details: always
 
 jwt:
-  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  # ${JWT_SECRET} lee la variable de entorno. El valor después de los ":"
+  # es el fallback SOLO para desarrollo local, si no seteás la variable.
+  # En producción, SIEMPRE seteá JWT_SECRET como variable de entorno real
+  # y sacá este fallback (o dejalo, pero nunca confíes en él para prod).
+  secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   expiration: 86400000
   refresh-expiration: 604800000
 

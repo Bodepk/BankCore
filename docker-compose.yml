@@ -5,15 +5,18 @@ services:
     image: postgres:15-alpine
     container_name: bank-postgres
     environment:
-      POSTGRES_USER: bankuser
-      POSTGRES_PASSWORD: bankpass
+      # ${VAR:-default}: si existe un .env con esa variable, la usa;
+      # si no, usa el valor por defecto (así el docker-compose sigue
+      # funcionando sin configuración extra para desarrollo local).
+      POSTGRES_USER: ${DB_USERNAME:-bankuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-bankpass}
       POSTGRES_DB: bankdb
     ports:
       - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bankuser -d bankdb"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-bankuser} -d bankdb"]
       interval: 10s
       timeout: 5s
       retries: 5
